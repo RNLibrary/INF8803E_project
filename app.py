@@ -1,57 +1,37 @@
+# app.py
+
 import streamlit as st
-import pandas as pd
 import plotly.express as px
-import requests
+from map import fetch_crime_data, create_filtered_map
 
 st.set_page_config(page_title="Chicago Crime Heatmap", layout="wide")
 st.title("📍 Chicago Crime Heatmap (2014–2025)")
 
-# ---------------------------
-# Fetch data from API
-# ---------------------------
+# Fetch and cache the data
 @st.cache_data(show_spinner=True)
-def fetch_crime_data():
-    base_url = "https://data.cityofchicago.org/resource/ijzp-q8t2.json"
-    years = range(2014, 2026)
-    all_data = []
+def load_data():
+    return fetch_crime_data()
 
-    for year in years:
-        params = {
-            "$limit": 3000,
-            "$where": f"latitude IS NOT NULL AND longitude IS NOT NULL "
-                      f"AND date >= '{year}-01-01T00:00:00' AND date < '{year+1}-01-01T00:00:00'"
-        }
-        response = requests.get(base_url, params=params)
-        if response.status_code == 200:
-            df_year = pd.DataFrame(response.json())
-            df_year["year"] = year
-            all_data.append(df_year)
+df = load_data()
 
-    df = pd.concat(all_data, ignore_index=True)
-    df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
-    df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
-    df['primary_type'] = df['primary_type'].astype(str).str.upper()
-    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-    df = df.dropna(subset=['latitude', 'longitude', 'primary_type'])
-    return df
-
-df = fetch_crime_data()
-
-# ---------------------------
 # Sidebar filters
-# ---------------------------
 crime_types = sorted(df['primary_type'].unique())
 years = sorted(df['year'].unique())
 
-selected_crime = st.sidebar.selectbox("Select Crime Type", crime_types, index=crime_types.index("THEFT") if "THEFT" in crime_types else 0)
-selected_year = st.sidebar.selectbox("Select Year", years, index=0)
+crime_types.insert(0, "All Crime Types")
+years.insert(0, "All Years")
 
-# ---------------------------
-# Filter data
-# ---------------------------
-filtered_df = df[(df['primary_type'] == selected_crime) & (df['year'] == selected_year)]
+selected_crime = st.sidebar.selectbox("Select Crime Type", crime_types)
+selected_year = st.sidebar.selectbox("Select Year", years)
 
-st.subheader(f"{selected_crime.title()} Crimes in {selected_year}")
+# Apply filtering
+filtered_df = create_filtered_map(df, selected_crime, selected_year)
+
+# Display heading and map
+title_crime = selected_crime if selected_crime != "All Crime Types" else "All Crimes"
+title_year = selected_year if selected_year != "All Years" else "All Years"
+st.subheader(f"{title_crime} in {title_year}")
+st.caption(f"Showing {len(filtered_df):,} crime records.")
 
 if filtered_df.empty:
     st.warning("No data available for this selection.")
