@@ -10,11 +10,14 @@ def fetch_crime_data():
     all_data = []
 
     for year in years:
-        params = {
-            "$limit": 10000,
-            "$where": f"latitude IS NOT NULL AND longitude IS NOT NULL "
-                      f"AND date >= '{year}-01-01T00:00:00' AND date < '{year+1}-01-01T00:00:00'"
-        }
+        year_data = []
+        for offset in range(0, 10000, 3000):
+            params = {
+                "$limit": 3000,
+                "$offset": offset,
+                "$where": f"latitude IS NOT NULL AND longitude IS NOT NULL "
+                          f"AND date >= '{year}-01-01T00:00:00' AND date < '{year+1}-01-01T00:00:00'"
+            }
         response = requests.get(base_url, params=params)
         if response.status_code == 200:
             df_year = pd.DataFrame(response.json())
