@@ -11,7 +11,7 @@ def fetch_crime_data():
 
     for year in years:
         params = {
-            "$limit": 3000,
+            "$limit": 10000,
             "$where": f"latitude IS NOT NULL AND longitude IS NOT NULL "
                       f"AND date >= '{year}-01-01T00:00:00' AND date < '{year+1}-01-01T00:00:00'"
         }
